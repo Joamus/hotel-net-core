@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "HotelBackendApi", "HotelBackendApi.csproj", "{D2C455C6-6867-424D-8FE5-DE5F00DEBAAF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D2C455C6-6867-424D-8FE5-DE5F00DEBAAF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2C455C6-6867-424D-8FE5-DE5F00DEBAAF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2C455C6-6867-424D-8FE5-DE5F00DEBAAF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2C455C6-6867-424D-8FE5-DE5F00DEBAAF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34ECB77F-DFF4-4DC3-8F3B-A687E2107E94}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34ECB77F-DFF4-4DC3-8F3B-A687E2107E94}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34ECB77F-DFF4-4DC3-8F3B-A687E2107E94}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34ECB77F-DFF4-4DC3-8F3B-A687E2107E94}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {33DF3627-F9EB-4FE9-BBC1-39848748C73D}
+	EndGlobalSection
+EndGlobal
