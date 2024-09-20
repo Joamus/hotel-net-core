@@ -1,6 +1,7 @@
+
 namespace HotelBackendApi;
 
-public class RoomReservation {
+public class RoomReservationDTO {
 	
 	public long Id { get; set; }
 	public ICollection<Guest> Guests { get; set; } = null!;
@@ -11,9 +12,5 @@ public class RoomReservation {
 	
 	public DateTime DepartureTime { get; set; }
 	
-	public ICollection<Order> Purchases { get; set; } = null!;
-	
 	public long RoomId { get; set; }
-	
-	public bool Approved { get; set; } = false;
 }

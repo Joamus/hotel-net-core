@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\HotelBackendApi.csproj" />
+    <!-- <ProjectReference Include="..\HotelBackendApi.csproj" /> -->
     <ProjectReference Include="..\HotelBackendApi\HotelBackendApi.csproj" />
   </ItemGroup>
 
