@@ -1,9 +1,13 @@
+using HotelBackendApi.Migrations;
+
 namespace HotelBackendApi;
 
 public class RoomReservation {
 	
 	public long Id { get; set; }
 	public ICollection<Guest> Guests { get; set; } = null!;
+	
+	public string UserId { get; set; } = null!;
 	
 	public DateTime ReservationTime { get; set; }
 	

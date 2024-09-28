@@ -6,11 +6,14 @@ using HotelBackendApi.Domain.Services;
 using HotelBackendApi.Domain.Exceptions.RoomReservationExceptions;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace HotelBackendApi.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("[controller]")]
+[Authorize(Roles = "Guest")]
 public class RoomReservationController : ControllerBase
 {
     private readonly ILogger<RoomReservationController> _logger;
@@ -28,9 +31,21 @@ public class RoomReservationController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<RoomReservation>>> GetRoomReservations()
     {
-        return await _context.RoomReservations.ToListAsync();
+        string? userId = null;
+        var claims = HttpContext.User;
+
+        if (claims.IsInRole("Manager")) {
+            userId = HttpContext.Request.Query["user"];
+            
+            if (!await _context.Users.AnyAsync(user => user.Id == userId)) {
+                return NotFound("User not found");
+            }
+        } else {
+            userId = claims.GetUserId();
+        }
+        return await _context.RoomReservations.Where(roomReservation => userId != null ? roomReservation.UserId == userId : true).ToListAsync();
     }
-    
+
     [HttpGet("{id}")]
     public async Task<ActionResult<RoomReservation>> GetRoomReservation(long id) {
         var reservation = await _context.RoomReservations.FindAsync(id);
@@ -44,6 +59,7 @@ public class RoomReservationController : ControllerBase
     }
     
     [HttpPost]
+    [Authorize(Roles = "Guest")]
     public async Task<ActionResult<RoomReservationDTO>> PostRoomReservation(RoomReservationDTO roomReservationDTO) {
         try {
             var roomReservation = new RoomReservation {
@@ -52,8 +68,10 @@ public class RoomReservationController : ControllerBase
                 DepartureTime = roomReservationDTO.DepartureTime,
                 ArrivalTime = roomReservationDTO.ArrivalTime,
                 ReservationTime = roomReservationDTO.ReservationTime,
-                RoomId = roomReservationDTO.RoomId
+                RoomId = roomReservationDTO.RoomId,
+                UserId = HttpContext.User.GetUserId()
             };
+
             await _roomReservationService.CreateReservation(roomReservation);
             return CreatedAtAction("PostRoomReservation", new { id = roomReservation.Id }, RoomReservationToDTO(roomReservation));
         } catch (RoomIsUnavailableException e) {
@@ -62,6 +80,7 @@ public class RoomReservationController : ControllerBase
     }
     
     [HttpPost("{id}/approve")]
+    [Authorize(Roles = "Manager")]
     [Produces("application/json")]
     public async Task<ActionResult<RoomReservationDTO>> ApproveRoomReservation(long id) {
         var roomReservation = await _context.RoomReservations.FindAsync(id);
@@ -85,7 +104,15 @@ public class RoomReservationController : ControllerBase
         if (id != roomReservationDTO.Id) {
             return NotFound();
         }
+
+        var originalRoomReservation = await _context.RoomReservations.FindAsync(id);
         
+        if (originalRoomReservation is null) {
+            return NotFound();
+        }
+
+        roomReservationDTO.UserId = originalRoomReservation.UserId;
+
         _context.Entry(roomReservationDTO).State = EntityState.Modified;
 
         try {
@@ -107,11 +134,17 @@ public class RoomReservationController : ControllerBase
         if (reservation == null) {
             return NotFound();
         }
-        
-        _context.Remove(id);
-        await _context.SaveChangesAsync();
-        
-        return NoContent();
+
+        var claims = HttpContext.User;
+
+        if (claims.GetUserId() == reservation.UserId || claims.IsInRole("Manager")) {
+            _context.Remove(id);
+            await _context.SaveChangesAsync();
+            
+            return NoContent();
+        } else {
+            return NotFound();
+        }
     }
     
     private static RoomReservationDTO RoomReservationToDTO(RoomReservation roomReservation) {
@@ -122,6 +155,7 @@ public class RoomReservationController : ControllerBase
             ArrivalTime = roomReservation.ArrivalTime,
             DepartureTime = roomReservation.DepartureTime,
             RoomId = roomReservation.RoomId,
+            UserId = roomReservation.UserId
         };
     }
     

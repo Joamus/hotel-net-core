@@ -10,7 +10,7 @@ using HotelBackendApi.DTO;
 
 namespace HotelBackendApi.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
     public class RoomController : ControllerBase
     {
@@ -23,14 +23,14 @@ namespace HotelBackendApi.Controllers
             _context = context;
         }
 
-        // GET: api/Room
+        // GET: Room
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RoomDTO>>> GetRooms()
         {
             return await _context.Rooms.Select(room => RoomToDTO(room)).ToListAsync();
         }
 
-        // GET: api/Room/5
+        // GET: Room/5
         [HttpGet("{id}")]
         public async Task<ActionResult<RoomDTO>> GetRoom(long id)
         {
@@ -44,7 +44,7 @@ namespace HotelBackendApi.Controllers
             return RoomToDTO(room);
         }
 
-        // PUT: api/Room/5
+        // PUT: Room/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
         public async Task<IActionResult> PutRoom(long id, RoomDTO roomDTO)
@@ -77,7 +77,7 @@ namespace HotelBackendApi.Controllers
             return NoContent();
         }
 
-        // POST: api/Room
+        // POST: Room
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<RoomDTO>> PostRoom(RoomDTO roomDTO)
@@ -93,7 +93,7 @@ namespace HotelBackendApi.Controllers
             return CreatedAtAction("PostRoom", new { id = room.Id }, RoomToDTO(room));
         }
 
-        // DELETE: api/Room/5
+        // DELETE: Room/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRoom(long id)
         {

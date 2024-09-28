@@ -13,4 +13,6 @@ public class RoomReservationDTO {
 	public DateTime DepartureTime { get; set; }
 	
 	public long RoomId { get; set; }
+
+	public string UserId { get; set; } = null!;
 }

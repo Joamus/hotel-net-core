@@ -2,6 +2,9 @@ using Microsoft.EntityFrameworkCore;
 using HotelBackendApi;
 using System.Text.Json.Serialization;
 using HotelBackendApi.Domain.Services;
+using Microsoft.AspNetCore.Identity;
+using AspNetCore.Identity.Extensions;
+using NuGet.Protocol;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +24,19 @@ builder.Services
 builder.Services.AddDbContext<MainContext>(opt => 
     opt.UseSqlite(connectionString));
 
+builder.Services.AddAuthorization(options => {
+    AuthorizationService.RegisterAuthRules(options);
+});
+builder.Services.AddAuthentication()
+    .AddBearerToken(IdentityConstants.BearerScheme, options => {
+        options.BearerTokenExpiration = TimeSpan.FromSeconds(600);
+    });
+
+builder.Services
+    .AddIdentityCore<User>()
+    .AddApiEndpoints()
+    .AddEntityFrameworkStores<MainContext>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer()
     .AddSwaggerGen()
@@ -33,12 +49,23 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    app.ApplyMigrations();
 }
+
+app.UseCors(builder => builder
+        .AllowAnyHeader()
+        .AllowAnyOrigin()
+        .AllowAnyMethod()
+        // .AllowCredentials()
+);
 
 app.UseHttpsRedirection();
 
-app.UseAuthorization();
+// app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapIdentityApi<User>();
 
 await app.RunAsync();
