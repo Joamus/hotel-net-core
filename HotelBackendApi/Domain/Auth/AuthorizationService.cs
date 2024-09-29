@@ -1,19 +1,54 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-public class AuthorizationService {
+public class AuthorizationSetupService {
 
 	public static void RegisterAuthRules(AuthorizationOptions options)
 	{
 		SetupClaims(options);
 	}
 	
-	static void SetupClaims (AuthorizationOptions options)
+	static void SetupClaims(AuthorizationOptions options)
 	{
 		options.AddPolicy("Employee", policy => policy.RequireClaim("EmployeeNumber"));
+		options.AddPolicy("MinGuest", policy => policy.RequireRole("Guest", "Manager"));
+		options.AddPolicy("MinManager", policy => policy.RequireRole("Manager"));
 	}
 	
-	public static bool HasReadAccess(ClaimsPrincipal claims, long targetUserId)
+	public async static void SetupRoles(WebApplication app)
+	{
+		
+		using (var scope = app.Services.CreateScope()) {
+		   var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+		   
+		   var roles = new [] { "Manager", "Guest" };
+		   
+		   foreach (var role in roles) {
+				if (!await roleManager.RoleExistsAsync(role))
+				{
+					await roleManager.CreateAsync(new IdentityRole(role));
+				}
+			}
+		   
+			var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+			// Add a default manager
+
+			string managerEmail = "admin@nethotel.com";
+			string managerPassword = "ILoveGuests1234#@";
+			
+			if (await userManager.FindByEmailAsync(managerEmail) == null) {
+				var user = new User();
+				user.Email = managerEmail;
+				user.PasswordHash = managerPassword;
+				
+				await userManager.CreateAsync(user, managerPassword);
+				await userManager.AddToRoleAsync(user, "Manager");
+			}
+		}
+	}
+	
+	
+	public async static ValueTask<bool> HasReadAccess(ClaimsPrincipal claims, IAuthorizationService authorizationService, long targetUserId)
 	{
 		// string requestingUserId = claims.Claims.First(claim => claim.Type == ClaimTypes.NameIdentifier).Value;
 		string requestingUserId = claims.GetUserId();
@@ -21,12 +56,9 @@ public class AuthorizationService {
 		if (requestingUserId == targetUserId.ToString()) {
 			return true; 
 		}
-
-		if (claims.IsInRole("Manager")) {
-			return true;
-		}
 		
-		return false;
+		var isAuthorized = await authorizationService.AuthorizeAsync(claims, "IsManager");
+		return isAuthorized.Succeeded;
 	}
 	
 }

@@ -13,7 +13,7 @@ namespace HotelBackendApi.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-[Authorize(Roles = "Guest")]
+[Authorize(Policy = "MinGuest")]
 public class RoomReservationController : ControllerBase
 {
     private readonly ILogger<RoomReservationController> _logger;

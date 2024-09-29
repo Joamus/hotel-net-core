@@ -25,7 +25,7 @@ builder.Services.AddDbContext<MainContext>(opt =>
     opt.UseSqlite(connectionString));
 
 builder.Services.AddAuthorization(options => {
-    AuthorizationService.RegisterAuthRules(options);
+    AuthorizationSetupService.RegisterAuthRules(options);
 });
 builder.Services.AddAuthentication()
     .AddBearerToken(IdentityConstants.BearerScheme, options => {
@@ -35,7 +35,9 @@ builder.Services.AddAuthentication()
 builder.Services
     .AddIdentityCore<User>()
     .AddApiEndpoints()
-    .AddEntityFrameworkStores<MainContext>();
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<MainContext>()
+    .AddUserManager<HotelUserManager>();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer()
@@ -57,12 +59,39 @@ app.UseCors(builder => builder
         .AllowAnyHeader()
         .AllowAnyOrigin()
         .AllowAnyMethod()
-        // .AllowCredentials()
 );
 
-app.UseHttpsRedirection();
+using (var scope = app.Services.CreateScope()) {
+   var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+   
+   var roles = new [] { "Manager", "Guest" };
+   
+   foreach (var role in roles) {
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+   
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    // Add a default manager
 
-// app.UseAuthorization();
+    string managerEmail = "admin@nethotel.com";
+    string managerPassword = "ILoveGuests1234#@";
+    
+    if (await userManager.FindByEmailAsync(managerEmail) == null) {
+        var user = new User();
+        user.Email = managerEmail;
+        user.PasswordHash = managerPassword;
+        
+        await userManager.CreateAsync(user, managerPassword);
+        await userManager.AddToRoleAsync(user, "Manager");
+    }
+
+    // Add a default guest
+}
+
+app.UseHttpsRedirection();
 
 app.MapControllers();
 

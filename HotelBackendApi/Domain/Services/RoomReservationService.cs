@@ -17,6 +17,7 @@ public class RoomReservationService {
 		var now = DateTime.Now;
 		roomReservation.ReservationTime = now;
 		
+		// Results<> result = 
 		if (roomReservation.ArrivalTime <= now) {
 			throw new Exception("Arrival time cannot be in the past");
 		}

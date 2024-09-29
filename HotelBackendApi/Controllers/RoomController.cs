@@ -7,10 +7,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using HotelBackendApi;
 using HotelBackendApi.DTO;
+using Microsoft.AspNetCore.Authorization;
 
 namespace HotelBackendApi.Controllers
 {
     [Route("[controller]")]
+    [Authorize(Policy = "MinGuest")]
     [ApiController]
     public class RoomController : ControllerBase
     {
@@ -47,6 +49,7 @@ namespace HotelBackendApi.Controllers
         // PUT: Room/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPut("{id}")]
+        [Authorize(Roles = "MinManager")]
         public async Task<IActionResult> PutRoom(long id, RoomDTO roomDTO)
         {
             if (id != roomDTO.Id)
@@ -80,6 +83,7 @@ namespace HotelBackendApi.Controllers
         // POST: Room
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
+        [Authorize(Roles = "MinManager")]
         public async Task<ActionResult<RoomDTO>> PostRoom(RoomDTO roomDTO)
         {
             var room = new Room {
@@ -95,6 +99,7 @@ namespace HotelBackendApi.Controllers
 
         // DELETE: Room/5
         [HttpDelete("{id}")]
+        [Authorize(Roles = "MinManager")]
         public async Task<IActionResult> DeleteRoom(long id)
         {
             var room = await _context.Rooms.FindAsync(id);
