@@ -1,45 +1,123 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using HotelBackendApi.Domain.Exceptions.RoomReservationExceptions;
+using System.Security.Claims;
+using HotelBackendApi.Authorization;
+using FluentResults;
 
 namespace HotelBackendApi.Domain.Services;
 
 public class RoomReservationService {
-	readonly ILogger<RoomReservationService> _loggerContext;
-	readonly MainContext _context;
+	readonly ILogger<RoomReservationService> LoggerContext;
+	readonly MainContext Context;
 
 	public RoomReservationService(ILogger<RoomReservationService> loggerContext, MainContext context) {
-		_loggerContext = loggerContext;
-		_context = context;
+		LoggerContext = loggerContext;
+		Context = context;
 	}
 
-	public async Task<ActionResult<RoomReservation>> CreateReservation(RoomReservation roomReservation) {
-		var now = DateTime.Now;
-		roomReservation.ReservationTime = now;
-		
-		// Results<> result = 
-		if (roomReservation.ArrivalTime <= now) {
-			throw new Exception("Arrival time cannot be in the past");
-		}
+    public async Task<ActionResult<IEnumerable<RoomReservation>>> GetRoomReservations(string? userId, ClaimsPrincipal requestingUser)
+    {
+        if (requestingUser.IsInRole(Role.Manager))
+        {
+            if (userId != null && !await Context.Users.AnyAsync(user => user.Id == userId))
+            {
+                return ApiError.NotFound("User not found").ToHttpError();
+            }
+        } else {
+            userId = requestingUser.GetUserId();
+        }
+        return await Context.RoomReservations.Where(roomReservation => userId == null || roomReservation.UserId == userId).ToListAsync();
+    }
 
-		if (roomReservation.DepartureTime <= roomReservation.ArrivalTime) {
-			throw new Exception("Departure time must be later than arrival time");
-		}
+    public async Task<ActionResult<RoomReservationDTO>> PostRoomReservation(RoomReservationDTO roomReservationDTO, ClaimsPrincipal requestingUser) {
+            string? userId = requestingUser.IsInRole("Manager") ? roomReservationDTO.UserId : requestingUser.GetUserId();
+            userId ??= requestingUser.GetUserId();
 
-		var allRoomReservations = await _context.RoomReservations.Where(reservation => reservation.RoomId == roomReservation.RoomId).ToListAsync();
-		bool overlappingReservation = allRoomReservations.Find(reservation => DoesReservationOverlapWithExistingReservation(reservation, roomReservation)) != null;
-		
-		if (overlappingReservation) {
-			throw new RoomIsUnavailableException();
-		}
+            var roomReservation = new RoomReservation {
+                Id = roomReservationDTO.Id,
+                Guests = new List<Guest>(),
+                DepartureTime = roomReservationDTO.DepartureTime,
+                ArrivalTime = roomReservationDTO.ArrivalTime,
+                ReservationTime = roomReservationDTO.ReservationTime,
+                RoomId = roomReservationDTO.RoomId,
+                UserId = userId
+            };
 
-        await _context.RoomReservations.AddAsync(roomReservation);
-        await _context.SaveChangesAsync();
+            var now = DateTime.Now;
+            roomReservation.ReservationTime = now;
+            
+            // Results<> result = 
+            if (roomReservation.ArrivalTime <= now) {
+                return ApiError.Conflict("Arrival time cannot be in the past").ToHttpError();
+            }
+
+            if (roomReservation.DepartureTime <= roomReservation.ArrivalTime) {
+                return ApiError.Conflict("Departure time must be later than arrival time").ToHttpError();
+            }
+
+            var allRoomReservations = await Context.RoomReservations.Where(reservation => reservation.RoomId == roomReservation.RoomId).ToListAsync();
+            bool overlappingReservation = allRoomReservations.Find(reservation => DoesReservationOverlapWithExistingReservation(reservation, roomReservation)) != null;
+            
+            if (overlappingReservation) {
+                return ApiError.Conflict("Room is unavailable").ToHttpError();
+            }
+
+            await Context.RoomReservations.AddAsync(roomReservation);
+            await Context.SaveChangesAsync();
 		
-		return roomReservation;
-	}
+            return RoomReservationToDTO(roomReservation);
+    }
+
+    public async Task<ActionResult> PutRoomReservation(long id, RoomReservationDTO roomReservationDTO, HttpContext httpContext) {
+        if (id != roomReservationDTO.Id) {
+            return ApiError.NotFound().ToHttpError();
+        }
+
+        var originalRoomReservation = await Context.RoomReservations.FindAsync(id);
+        
+        if (originalRoomReservation == null) {
+            return ApiError.NotFound().ToHttpError();
+        }
+
+        var requestingUser = httpContext.User;
+        if (!requestingUser.IsInRole("Manager")) {
+            roomReservationDTO.UserId = originalRoomReservation.UserId;
+        }
+
+        Context.Entry(roomReservationDTO).State = EntityState.Modified;
+
+        try {
+            await Context.SaveChangesAsync();
+        } catch (DbUpdateConcurrencyException) {
+            if (!RoomReservationExists(id)) {
+                return ApiError.NotFound().ToHttpError();
+            } else {
+                return ApiError.InternalError("internal_error", "An unknown error occured").ToHttpError();
+            }
+        }
+        return new EmptyResult();
+    }
+
+    public async Task<IActionResult> DeleteRoomReservation(long id, HttpContext httpContext) {
+        var reservation = await Context.RoomReservations.FindAsync(id);
+        
+        if (reservation == null) {
+            return ApiError.NotFound().ToHttpError();
+        }
+
+        var requestingUser = httpContext.User;
+
+        if (requestingUser.GetUserId() == reservation.UserId || requestingUser.IsInRole("Manager")) {
+            Context.Remove(id);
+            await Context.SaveChangesAsync();
+            
+            return new EmptyResult();
+        } else {
+            return ApiError.NotFound().ToHttpError();
+        }
+    }
 	
-	public bool DoesReservationOverlapWithExistingReservation(RoomReservation existingReservation, RoomReservation newReservation) {
+	public static bool DoesReservationOverlapWithExistingReservation(RoomReservation existingReservation, RoomReservation newReservation) {
 		if (existingReservation.RoomId != newReservation.RoomId) {
 			return false;
 		}
@@ -48,4 +126,31 @@ public class RoomReservationService {
 
 		return earliestReservation.DepartureTime > latestReservation.ArrivalTime;
 	}
+
+    public async Task<ActionResult<RoomReservationDTO>> ApproveRoomReservation(RoomReservation roomReservation) {
+        roomReservation.Approved = true;
+        
+        Context.Update(roomReservation);
+        Context.Entry(roomReservation).State = EntityState.Modified;
+        
+        await Context.SaveChangesAsync();
+        
+        return RoomReservationToDTO(roomReservation);
+    }
+
+    public static RoomReservationDTO RoomReservationToDTO(RoomReservation roomReservation) {
+        return new RoomReservationDTO {
+            Id = roomReservation.Id,
+            Guests = roomReservation.Guests,
+            ReservationTime = roomReservation.ReservationTime,
+            ArrivalTime = roomReservation.ArrivalTime,
+            DepartureTime = roomReservation.DepartureTime,
+            RoomId = roomReservation.RoomId,
+            UserId = roomReservation.UserId
+        };
+    }
+    
+    public bool RoomReservationExists(long id) {
+        return Context.RoomReservations.Any(e => e.Id == id);
+    }
 }

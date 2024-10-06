@@ -5,6 +5,7 @@ using HotelBackendApi.Domain.Services;
 using Microsoft.AspNetCore.Identity;
 using AspNetCore.Identity.Extensions;
 using NuGet.Protocol;
+using HotelBackendApi.Domain.Authorization;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,7 +26,7 @@ builder.Services.AddDbContext<MainContext>(opt =>
     opt.UseSqlite(connectionString));
 
 builder.Services.AddAuthorization(options => {
-    AuthorizationSetupService.RegisterAuthRules(options);
+    AuthorizationSetupService.SetupClaims(options);
 });
 builder.Services.AddAuthentication()
     .AddBearerToken(IdentityConstants.BearerScheme, options => {
@@ -53,7 +54,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 
     app.ApplyMigrations();
+    await AuthorizationSetupService.SetupTestUsers(app);
 }
+
+await AuthorizationSetupService.SetupRoles(app);
 
 app.UseCors(builder => builder
         .AllowAnyHeader()
@@ -61,35 +65,6 @@ app.UseCors(builder => builder
         .AllowAnyMethod()
 );
 
-using (var scope = app.Services.CreateScope()) {
-   var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-   
-   var roles = new [] { "Manager", "Guest" };
-   
-   foreach (var role in roles) {
-        if (!await roleManager.RoleExistsAsync(role))
-        {
-            await roleManager.CreateAsync(new IdentityRole(role));
-        }
-    }
-   
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-    // Add a default manager
-
-    string managerEmail = "admin@nethotel.com";
-    string managerPassword = "ILoveGuests1234#@";
-    
-    if (await userManager.FindByEmailAsync(managerEmail) == null) {
-        var user = new User();
-        user.Email = managerEmail;
-        user.PasswordHash = managerPassword;
-        
-        await userManager.CreateAsync(user, managerPassword);
-        await userManager.AddToRoleAsync(user, "Manager");
-    }
-
-    // Add a default guest
-}
 
 app.UseHttpsRedirection();
 

@@ -14,5 +14,5 @@ public class RoomReservationDTO {
 	
 	public long RoomId { get; set; }
 
-	public string UserId { get; set; } = null!;
+	public string? UserId { get; set; } = null!;
 }

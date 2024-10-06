@@ -10,4 +10,10 @@ public class HotelUserManager : UserManager<User>
 	{
 	}
 
+    public async override Task<IdentityResult> CreateAsync(User user)
+    {
+        await base.CreateAsync(user);
+		
+		return await AddToRoleAsync(user, "Guest");
+    }
 }
