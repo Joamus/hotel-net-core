@@ -24,22 +24,11 @@ For now, the code itself is a simple web API that has endpoints for a creating n
   * Delete a reservation - Guest can delete own reservation, manager can delete any
   * Approve a reservation - Manager only
 
-* (Rudementary) unit tests
-
-### Notes ###
-
-I experimented with moving the logic from the RoomReservationController to a RoomReservationController, so the controller itself is more bare-bones. I think this has a trade-off, since it introduces more complexity,
-but the service also cannot return HTTP responses (since they are inherited from ControllerBase), which leaves these options:
-
-a) Throw custom exceptions, that can be mapped to an error response
-b) Return a result object, that can be mapped to an error response
-c) Pass the controller as a parameter into the service method, so it can access the HTTP-response functions (practical but not very clean)
-
-I chose to not do it for the RoomController, because the logic is fairly simple for now.
+* (Rudimentary) unit tests
 
 ### To-do ###
 
-* Clean up error handling
+* Clean up error handling (done, mostly)
 
 * Make "room-purchase" handling
   * A hotel guest can put purchases on their room, which they should pay for at check-out
